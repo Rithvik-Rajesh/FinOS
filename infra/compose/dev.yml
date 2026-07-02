@@ -1,0 +1,69 @@
+# Local development stack: Postgres, Redis, MinIO.
+# Bring up with:  make up   (or: docker compose -f infra/compose/dev.yml up -d)
+name: finos-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-finos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-finos_dev_password_change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-finos}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-finos}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-finos}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-finos_dev_password_change_me}
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # web console
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot: create the attachments bucket, then exit.
+  minio-setup:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-finos} ${MINIO_ROOT_PASSWORD:-finos_dev_password_change_me} &&
+      mc mb --ignore-existing local/${FINOS_S3_BUCKET:-finos-attachments} &&
+      mc anonymous set none local/${FINOS_S3_BUCKET:-finos-attachments} &&
+      echo 'bucket ready';
+      "
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
