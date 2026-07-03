@@ -477,3 +477,46 @@ recurring item (in `calendar`) tagged `is_subscription` with vendor/plan/renewal
 metadata. **Consequences:** One recurrence engine, one forecast, one source of truth;
 the "Subscription Manager" is a filtered view + analytics over recurring items. Avoids
 duplicated recurrence logic. See [docs/DATABASE.md](docs/DATABASE.md).
+
+### ADR-008 — Immutable, double-entry-friendly ledger
+
+**Context:** Balances must be exact and auditable; financial history must not be
+rewritten. **Decision:** A transaction projects to immutable **ledger entry** postings;
+an account balance is *defined* as the sum of its entries. Edits and deletes append
+*reversing* entries rather than mutating history. **Consequences:** Balances are always
+exact, the full history of every change is preserved, and reconciliation is possible.
+Transfers satisfy the strict double-entry (nets-to-zero) invariant; income/expense are
+single-sided. See [docs/TRANSACTION_ENGINE.md](docs/TRANSACTION_ENGINE.md).
+
+### ADR-009 — Portable ORM models (Postgres in prod, SQLite in tests)
+
+**Context:** We need fast, hermetic tests of the full persistence + sync stack without
+standing up Postgres, while deploying on Postgres. **Decision:** Use only portable
+SQLAlchemy types (`Uuid`, `BigInteger`, `JSON`, non-native `Enum`), Python-side timestamp
+defaults, and an app-assigned `server_seq` (no DB sequence). **Consequences:** Integration
+tests run on in-memory SQLite (aiosqlite) with zero services; the same code runs on
+Postgres 16. Trade-off: we forgo a few Postgres-specific niceties (JSONB indexing, native
+enums) at this layer — acceptable, and reversible per-column later.
+
+---
+
+## 11. Platform foundation (implemented)
+
+The transaction/sync foundation that every future module builds on is implemented and
+under test (unit + integration, ruff + mypy-strict + architecture tests). Deep dives:
+
+- **[docs/TRANSACTION_ENGINE.md](docs/TRANSACTION_ENGINE.md)** — entities, the immutable
+  double-entry posting model, balances, reconciliation, categorization, lifecycle.
+- **[docs/SYNC_ARCHITECTURE.md](docs/SYNC_ARCHITECTURE.md)** — sync-ready entities, the
+  `server_seq` cursor, pull/push, conflict detection, incremental + full-sync recovery.
+- **[docs/EVENT_ARCHITECTURE.md](docs/EVENT_ARCHITECTURE.md)** — domain events, the
+  in-process bus, and the transactional outbox other modules subscribe to.
+- **[docs/REPORTING_ENGINE.md](docs/REPORTING_ENGINE.md)** — deterministic spending,
+  growth, and period analytics (the inputs future AI features consume).
+- **[docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md)** — security, scalability,
+  consistency, and offline-sync risk review with fixes applied.
+
+Modules implemented: `accounts`, `categories`, `merchants`, `ledger` (transactions +
+immutable entries), `rules` (engine + simulation + testing), `reporting`, `sync`, `audit`,
+plus the `events` (bus + outbox) infrastructure. The AI wall and domain purity are
+enforced by `backend/tests/test_architecture.py`.

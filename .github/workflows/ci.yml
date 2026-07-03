@@ -34,7 +34,7 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Type check
-        run: uv run mypy app
+        run: uv run mypy
 
       - name: Tests (incl. architecture-boundary tests)
         run: uv run pytest

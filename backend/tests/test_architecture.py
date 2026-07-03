@@ -44,7 +44,11 @@ def test_only_ai_module_imports_llm() -> None:
 
 
 def test_domain_is_pure() -> None:
-    forbidden = ("app.db", "app.llm", "app.api", "app.modules", "app.workers")
+    # No inward dependencies on other app layers...
+    forbidden_app = ("app.db", "app.llm", "app.api", "app.modules", "app.workers", "app.events")
+    # ...and no infrastructure libraries leaking into the domain.
+    forbidden_infra = ("sqlalchemy", "fastapi", "pydantic", "celery", "redis", "httpx", "alembic")
+    forbidden = forbidden_app + forbidden_infra
     offenders: list[str] = []
     for path in _py_files("domain"):
         for imp in _imports(path):

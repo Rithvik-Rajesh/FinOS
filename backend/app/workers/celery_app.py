@@ -25,7 +25,7 @@ celery_app.conf.update(
 )
 
 
-@celery_app.task(name="finos.ping")
+@celery_app.task(name="finos.ping")  # type: ignore[untyped-decorator]  # celery is untyped
 def ping() -> str:
     """Trivial task to verify broker connectivity."""
     return "pong"
