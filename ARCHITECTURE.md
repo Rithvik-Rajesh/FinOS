@@ -520,3 +520,54 @@ Modules implemented: `accounts`, `categories`, `merchants`, `ledger` (transactio
 immutable entries), `rules` (engine + simulation + testing), `reporting`, `sync`, `audit`,
 plus the `events` (bus + outbox) infrastructure. The AI wall and domain purity are
 enforced by `backend/tests/test_architecture.py`.
+
+### ADR-010 — One shared recurrence engine
+
+**Context:** Recurring expenses, subscriptions, salary, and the calendar all need "when
+does this repeat?". **Decision:** A single pure, interval-based recurrence engine
+(`domain/recurrence.py`) with month-end clamping powers all of them; a subscription is a
+`RecurringSeries` with `is_subscription=true` (ADR-007). **Consequences:** No duplicated
+schedule logic; one place to test. **Rejected:** per-feature schedulers. Full iCal RRULE is
+a documented extension that keeps the same interface. See
+[docs/RECURRING_ENGINE.md](docs/RECURRING_ENGINE.md).
+
+### ADR-011 — Planning read-models are computed on read, not stored
+
+**Context:** Goal projections, budget utilization/periods, the calendar, forecasts, and
+subscription analytics all derive from the ledger + a few definitions. **Decision:**
+**Compute them on read** from the source of truth; persist only genuine state (goals &
+contributions, budgets & allocations, recurring series, and event-generated
+`budget_alerts`). **Consequences:** These read-models can never drift from actual
+transactions — the strongest form of "updates automatically" (requirement 8) — and need no
+event handlers. Events are used only for side effects that must be captured at their moment
+(budget alerts), delivered via the transactional outbox + dispatcher. **Tradeoff:**
+aggregate queries on read; mitigated by composite indexes and bounded windows, with
+precomputation available later if profiling requires it.
+
+---
+
+## 12. Financial planning layer (implemented)
+
+Built entirely on the transaction foundation (no foundation changes). Deterministic, AI-free,
+tested (ruff + mypy-strict + unit + integration + architecture tests). Deep dives:
+
+- **[docs/GOALS_ENGINE.md](docs/GOALS_ENGINE.md)** — goals, contributions, milestones, projections.
+- **[docs/BUDGET_ENGINE.md](docs/BUDGET_ENGINE.md)** — budgets, allocations, utilization, alerts.
+- **[docs/RECURRING_ENGINE.md](docs/RECURRING_ENGINE.md)** — recurrence, detection, subscriptions.
+- **[docs/FINANCIAL_CALENDAR.md](docs/FINANCIAL_CALENDAR.md)** — computed financial-event stream.
+- **[docs/FORECASTING_ENGINE.md](docs/FORECASTING_ENGINE.md)** — deterministic cash forecasting.
+- **[docs/SIMULATION_ENGINE.md](docs/SIMULATION_ENGINE.md)** — purchase/EMI/goal-impact decisions.
+
+**Pure engines** (`domain/`): `goals`, `budgets`, `recurrence`, `detection`, `subscriptions`,
+`forecasting`, `simulation`. **Modules** (`modules/`): `goals`, `budgets`, `recurring`,
+`subscriptions`, `calendar`, `forecasting`, `simulation`.
+
+**Event integration:** the ledger's existing `TransactionCreated` events are drained from the
+transactional outbox by `app/events/dispatcher.py` to idempotent handlers
+(`app/events/handlers.py`) — currently budget-threshold alerts. Goals, budgets, calendar, and
+forecasts stay current by being computed on read (ADR-011), so they require no coupling to the
+ledger at all.
+
+**Shared abstractions (anti-silo):** one recurrence engine (ADR-010), the `Money` type and
+reporting engine reused across every module, goal projection reused by the simulator, and a
+single "compute-on-read" pattern (ADR-011) applied uniformly.

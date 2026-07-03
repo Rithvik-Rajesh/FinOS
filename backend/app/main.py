@@ -22,6 +22,10 @@ log = get_logger(__name__)
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging()
     settings = get_settings()
+    # Register planning-layer event handlers on the outbox dispatcher.
+    from app.events.handlers import register_all
+
+    register_all()
     log.info("finos_startup", env=settings.env, version=__version__)
     # Phase 1+: initialize DB engine, Redis pool, MinIO client here.
     yield

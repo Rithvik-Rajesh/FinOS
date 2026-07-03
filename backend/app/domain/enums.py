@@ -118,3 +118,118 @@ class Period(StrEnum):
     WEEK = "week"
     MONTH = "month"
     YEAR = "year"
+
+
+# --------------------------------------------------------------------------- #
+# Financial planning layer
+# --------------------------------------------------------------------------- #
+class GoalType(StrEnum):
+    SAVINGS = "savings"
+    PURCHASE = "purchase"
+    EMERGENCY_FUND = "emergency_fund"
+    EDUCATION = "education"
+    TRAVEL = "travel"
+    CUSTOM = "custom"
+
+
+class GoalStatus(StrEnum):
+    ACTIVE = "active"
+    PAUSED = "paused"
+    ACHIEVED = "achieved"
+    ARCHIVED = "archived"
+
+
+class GoalHealth(StrEnum):
+    """Deterministic on-track assessment of a goal."""
+
+    ON_TRACK = "on_track"
+    AHEAD = "ahead"
+    BEHIND_SCHEDULE = "behind_schedule"
+    ACHIEVED = "achieved"
+    NO_DEADLINE = "no_deadline"
+    AT_RISK = "at_risk"  # deadline in the past, not achieved
+
+
+class BudgetPeriodType(StrEnum):
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+    CUSTOM = "custom"
+
+
+class BudgetHealth(StrEnum):
+    UNDER = "under"  # within allocation
+    WARNING = "warning"  # crossed the warning threshold
+    OVER = "over"  # overspent
+
+
+class RecurrenceInterval(StrEnum):
+    """How often a recurring series repeats."""
+
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+    YEARLY = "yearly"
+
+
+class RecurringKind(StrEnum):
+    RENT = "rent"
+    EMI = "emi"
+    SIP = "sip"
+    UTILITY = "utility"
+    SUBSCRIPTION = "subscription"
+    SALARY = "salary"
+    OTHER = "other"
+
+
+class RecurringDirection(StrEnum):
+    INFLOW = "inflow"  # income (salary)
+    OUTFLOW = "outflow"  # expense (rent, subscription)
+
+
+class RecurringStatus(StrEnum):
+    PENDING_APPROVAL = "pending_approval"  # auto-detected, awaiting user confirmation
+    ACTIVE = "active"
+    PAUSED = "paused"
+    CANCELLED = "cancelled"
+
+
+class OccurrenceStatus(StrEnum):
+    UPCOMING = "upcoming"
+    PAID = "paid"
+    SKIPPED = "skipped"
+    MISSED = "missed"  # due date passed with no matching transaction
+
+
+class SubscriptionStatus(StrEnum):
+    ACTIVE = "active"
+    PAUSED = "paused"
+    CANCELLED = "cancelled"
+
+
+class BillingCycle(StrEnum):
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+    YEARLY = "yearly"
+
+
+class FinancialEventType(StrEnum):
+    BILL = "bill"
+    SUBSCRIPTION = "subscription"
+    EMI = "emi"
+    GOAL_MILESTONE = "goal_milestone"
+    BUDGET_CHECKPOINT = "budget_checkpoint"
+    SALARY = "salary"
+    RECURRING_EXPENSE = "recurring_expense"
+
+
+class ForecastHorizon(StrEnum):
+    D30 = "30d"
+    D90 = "90d"
+    D180 = "180d"
+    Y1 = "1y"
+
+    @property
+    def days(self) -> int:
+        return {"30d": 30, "90d": 90, "180d": 180, "1y": 365}[self.value]
