@@ -22,10 +22,22 @@ from app.modules.accounts import repository as accounts_repo
 from app.modules.accounts import service as accounts_service
 from app.modules.accounts.models import Account
 from app.modules.accounts.schemas import AccountCreate, AccountOut, AccountUpdate
+from app.modules.budgets import repository as budgets_repo
+from app.modules.budgets import service as budgets_service
+from app.modules.budgets.models import Budget
+from app.modules.budgets.schemas import BudgetCreate, BudgetOut, BudgetUpdate
 from app.modules.categories import repository as categories_repo
 from app.modules.categories import service as categories_service
 from app.modules.categories.models import Category
 from app.modules.categories.schemas import CategoryCreate, CategoryOut, CategoryUpdate
+from app.modules.goals import repository as goals_repo
+from app.modules.goals import service as goals_service
+from app.modules.goals.models import Goal
+from app.modules.goals.schemas import GoalCreate, GoalOut, GoalUpdate
+from app.modules.identity import repository as identity_repo
+from app.modules.identity import service as identity_service
+from app.modules.identity.models import UserProfile
+from app.modules.identity.schemas import ProfileOut, ProfileUpdate
 from app.modules.ledger import repository as ledger_repo
 from app.modules.ledger import service as ledger_service
 from app.modules.ledger.models import Transaction
@@ -34,6 +46,10 @@ from app.modules.merchants import repository as merchants_repo
 from app.modules.merchants import service as merchants_service
 from app.modules.merchants.models import Merchant
 from app.modules.merchants.schemas import MerchantCreate, MerchantOut, MerchantUpdate
+from app.modules.recurring import repository as recurring_repo
+from app.modules.recurring import service as recurring_service
+from app.modules.recurring.models import RecurringSeries
+from app.modules.recurring.schemas import SeriesCreate, SeriesOut, SeriesUpdate
 from app.modules.rules import repository as rules_repo
 from app.modules.rules import service as rules_service
 from app.modules.rules.models import CategorizationRule
@@ -60,6 +76,14 @@ def _serialize(entity: SyncEntity, row: Any) -> dict[str, Any] | None:
         return MerchantOut.model_validate(row).model_dump(mode="json")
     if entity == "rules":
         return RuleOut.model_validate(row).model_dump(mode="json")
+    if entity == "goals":
+        return GoalOut.model_validate(row).model_dump(mode="json")
+    if entity == "budgets":
+        return BudgetOut.model_validate(row).model_dump(mode="json")
+    if entity == "recurring":
+        return SeriesOut.model_validate(row).model_dump(mode="json")
+    if entity == "profiles":
+        return ProfileOut.model_validate(row).model_dump(mode="json")
     return TransactionOut.from_model(row).model_dump(mode="json")
 
 
@@ -89,6 +113,10 @@ async def pull(
     await gather("merchants", await _changed(session, Merchant, user_id, since, limit))
     await gather("rules", await _changed(session, CategorizationRule, user_id, since, limit))
     await gather("transactions", await _changed(session, Transaction, user_id, since, limit))
+    await gather("goals", await _changed(session, Goal, user_id, since, limit))
+    await gather("budgets", await _changed(session, Budget, user_id, since, limit))
+    await gather("recurring", await _changed(session, RecurringSeries, user_id, since, limit))
+    await gather("profiles", await _changed(session, UserProfile, user_id, since, limit))
 
     collected.sort(key=lambda item: item[0])
     has_more = len(collected) > limit
@@ -120,6 +148,14 @@ async def _get_active(
         return await merchants_repo.get(session, user_id, entity_id)
     if entity == "rules":
         return await rules_repo.get(session, user_id, entity_id)
+    if entity == "goals":
+        return await goals_repo.get(session, user_id, entity_id)
+    if entity == "budgets":
+        return await budgets_repo.get(session, user_id, entity_id)
+    if entity == "recurring":
+        return await recurring_repo.get(session, user_id, entity_id)
+    if entity == "profiles":
+        return await identity_repo.get(session, user_id)  # per-user singleton
     return await ledger_repo.get(session, user_id, entity_id)
 
 
@@ -197,6 +233,60 @@ async def _apply_upsert(
             data=RuleUpdate.model_validate(data),
             correlation_id=correlation_id,
         )
+    if entity == "goals":
+        if not exists:
+            return await goals_service.create_goal(
+                session,
+                user_id=user_id,
+                data=GoalCreate.model_validate({**data, "id": str(eid)}),
+                correlation_id=correlation_id,
+            )
+        return await goals_service.update_goal(
+            session,
+            user_id=user_id,
+            goal_id=eid,
+            data=GoalUpdate.model_validate(data),
+            clock=clock,
+            correlation_id=correlation_id,
+        )
+    if entity == "budgets":
+        if not exists:
+            return await budgets_service.create_budget(
+                session,
+                user_id=user_id,
+                data=BudgetCreate.model_validate({**data, "id": str(eid)}),
+                correlation_id=correlation_id,
+            )
+        return await budgets_service.update_budget(
+            session,
+            user_id=user_id,
+            budget_id=eid,
+            data=BudgetUpdate.model_validate(data),
+            clock=clock,
+            correlation_id=correlation_id,
+        )
+    if entity == "recurring":
+        if not exists:
+            return await recurring_service.create_series(
+                session,
+                user_id=user_id,
+                data=SeriesCreate.model_validate({**data, "id": str(eid)}),
+                clock=clock,
+                correlation_id=correlation_id,
+            )
+        return await recurring_service.update_series(
+            session,
+            user_id=user_id,
+            series_id=eid,
+            data=SeriesUpdate.model_validate(data),
+            clock=clock,
+            correlation_id=correlation_id,
+        )
+    if entity == "profiles":
+        # Profile is a per-user singleton: upsert always maps to an update.
+        return await identity_service.update_profile(
+            session, user_id=user_id, data=ProfileUpdate.model_validate(data)
+        )
     if not exists:
         return await ledger_service.create_transaction(
             session,
@@ -252,6 +342,28 @@ async def _apply_delete(
         await rules_service.delete_rule(
             session, user_id=user_id, rule_id=entity_id, clock=clock, correlation_id=correlation_id
         )
+    elif entity == "goals":
+        await goals_service.delete_goal(
+            session, user_id=user_id, goal_id=entity_id, clock=clock, correlation_id=correlation_id
+        )
+    elif entity == "budgets":
+        await budgets_service.delete_budget(
+            session,
+            user_id=user_id,
+            budget_id=entity_id,
+            clock=clock,
+            correlation_id=correlation_id,
+        )
+    elif entity == "recurring":
+        await recurring_service.delete_series(
+            session,
+            user_id=user_id,
+            series_id=entity_id,
+            clock=clock,
+            correlation_id=correlation_id,
+        )
+    elif entity == "profiles":
+        raise AppError("profiles cannot be deleted via sync")
     else:
         await ledger_service.delete_transaction(
             session, user_id=user_id, txn_id=entity_id, clock=clock, correlation_id=correlation_id

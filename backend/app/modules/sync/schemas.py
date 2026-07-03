@@ -7,7 +7,17 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-SyncEntity = Literal["accounts", "categories", "merchants", "rules", "transactions"]
+SyncEntity = Literal[
+    "accounts",
+    "categories",
+    "merchants",
+    "rules",
+    "transactions",
+    "goals",
+    "budgets",
+    "recurring",
+    "profiles",
+]
 
 
 class SyncChange(BaseModel):

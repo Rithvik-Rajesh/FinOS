@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/sign_in_page.dart';
+import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/onboarding/presentation/splash_page.dart';
 import '../../features/onboarding/presentation/welcome_page.dart';
 
@@ -10,6 +11,7 @@ abstract final class Routes {
   static const splash = '/';
   static const welcome = '/welcome';
   static const signIn = '/sign-in';
+  static const home = '/home';
 }
 
 /// GoRouter, exposed through Riverpod so guards can later react to auth state
@@ -29,6 +31,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.signIn,
         builder: (context, state) => const SignInPage(),
+      ),
+      GoRoute(
+        path: Routes.home,
+        builder: (context, state) => const DashboardScreen(),
       ),
     ],
   );

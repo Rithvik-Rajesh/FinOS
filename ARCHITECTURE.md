@@ -571,3 +571,42 @@ ledger at all.
 **Shared abstractions (anti-silo):** one recurrence engine (ADR-010), the `Money` type and
 reporting engine reused across every module, goal projection reused by the simulator, and a
 single "compute-on-read" pattern (ADR-011) applied uniformly.
+
+### ADR-012 — Production auth: Supabase JWKS verification
+
+**Context:** the dev bypass must be replaced with real verification. **Decision:** the API
+verifies the access JWT's signature against Supabase's **JWKS** (RS256/ES256), checks
+`exp`/`aud`/`sub`, and extracts `sub` as the user id; JWKS fetch runs in a worker thread
+(pyjwt caches keys, refetches on rotation). Sign-up/in/out and session restoration are
+handled by the Supabase SDK on the client; the backend only validates. Dev bypass remains for
+local/test and is ignored in prod. **Consequences:** no shared secret in the API, rotation-safe,
+stateless. See [SECURITY.md](SECURITY.md#authentication).
+
+### ADR-013 — Dashboard is a backend-for-frontend aggregate
+
+**Decision:** a single `GET /v1/dashboard` composes every home-screen section server-side
+(one call per engine, ids-not-names) instead of the app making 6+ calls. **Consequences:** one
+round-trip and a consistent snapshot on the hottest screen; no new financial math; cache-able
+by sync cursor. See [docs/DASHBOARD_ARCHITECTURE.md](docs/DASHBOARD_ARCHITECTURE.md).
+
+---
+
+## 13. Product experience layer (implemented)
+
+Built on the foundation + planning layers without changing them. Deterministic and AI-free;
+green on ruff, mypy-strict, architecture tests, and unit + integration tests.
+
+- **Production auth** — Supabase JWKS verification ([SECURITY.md](SECURITY.md), ADR-012).
+- **User profile & preferences** — `identity` module (currency/locale/timezone/week-start/
+  income + `financial_priority`/`risk_profile`); consumed by the copilot.
+- **Sync completion** — goals, budgets, recurring (subscriptions), and profiles now participate
+  in delta sync alongside the core entities ([SYNC_ARCHITECTURE.md](docs/SYNC_ARCHITECTURE.md)).
+- **Insight engine** — deterministic, explainable insights ([INSIGHT_ENGINE.md](docs/INSIGHT_ENGINE.md)).
+- **Review engine** — stored weekly/monthly/quarterly snapshots ([REVIEW_ENGINE.md](docs/REVIEW_ENGINE.md)).
+- **Notification engine** — rules/preferences/queue, vendor-neutral ([NOTIFICATION_ENGINE.md](docs/NOTIFICATION_ENGINE.md)).
+- **Dashboard BFF** — one optimized read ([DASHBOARD_ARCHITECTURE.md](docs/DASHBOARD_ARCHITECTURE.md)).
+- **AI copilot foundation** — `modules/ai` context/prompt builders ([AI_COPILOT_ARCHITECTURE.md](docs/AI_COPILOT_ARCHITECTURE.md)).
+- **Flutter app** — feature-first, offline-first architecture ([FRONTEND_ARCHITECTURE.md](docs/FRONTEND_ARCHITECTURE.md)).
+
+New modules: `identity`, `insights`, `reviews`, `notifications`, `dashboard`, `ai`. New pure
+domain: `insights`, `reviews`. The deterministic wall and domain purity remain enforced.

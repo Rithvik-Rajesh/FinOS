@@ -268,4 +268,6 @@ def occurrences_for_series(
         return []
     # Persisted datetimes come back naive on SQLite; coerce before comparing/expanding.
     upper = min(end, _aware(series.end_at)) if series.end_at else end
-    return occurrences_between(RecurrenceSpec(series.interval, _aware(series.anchor_at)), start, upper)
+    return occurrences_between(
+        RecurrenceSpec(series.interval, _aware(series.anchor_at)), start, upper
+    )

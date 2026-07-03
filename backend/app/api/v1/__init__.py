@@ -10,15 +10,21 @@ from fastapi import APIRouter
 
 from app.api.v1 import health, me
 from app.modules.accounts.api import router as accounts_router
+from app.modules.ai.api import router as ai_router
 from app.modules.budgets.api import router as budgets_router
 from app.modules.calendar.api import router as calendar_router
 from app.modules.categories.api import router as categories_router
+from app.modules.dashboard.api import router as dashboard_router
 from app.modules.forecasting.api import router as forecast_router
 from app.modules.goals.api import router as goals_router
+from app.modules.identity.api import router as profile_router
+from app.modules.insights.api import router as insights_router
 from app.modules.ledger.api import router as transactions_router
 from app.modules.merchants.api import router as merchants_router
+from app.modules.notifications.api import router as notifications_router
 from app.modules.recurring.api import router as recurring_router
 from app.modules.reporting.api import router as reports_router
+from app.modules.reviews.api import router as reviews_router
 from app.modules.rules.api import router as rules_router
 from app.modules.simulation.api import router as simulations_router
 from app.modules.subscriptions.api import router as subscriptions_router
@@ -43,3 +49,10 @@ api_router.include_router(subscriptions_router)
 api_router.include_router(calendar_router)
 api_router.include_router(forecast_router)
 api_router.include_router(simulations_router)
+# Product experience layer
+api_router.include_router(profile_router)
+api_router.include_router(insights_router)
+api_router.include_router(reviews_router)
+api_router.include_router(notifications_router)
+api_router.include_router(dashboard_router)
+api_router.include_router(ai_router)

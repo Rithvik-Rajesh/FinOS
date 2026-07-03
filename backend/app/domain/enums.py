@@ -233,3 +233,62 @@ class ForecastHorizon(StrEnum):
     @property
     def days(self) -> int:
         return {"30d": 30, "90d": 90, "180d": 180, "1y": 365}[self.value]
+
+
+# --------------------------------------------------------------------------- #
+# Product experience layer
+# --------------------------------------------------------------------------- #
+class FinancialPriority(StrEnum):
+    SAVINGS_FIRST = "savings_first"
+    GOAL_FIRST = "goal_first"
+    DEBT_REDUCTION_FIRST = "debt_reduction_first"
+    BALANCED = "balanced"
+
+
+class RiskProfile(StrEnum):
+    CONSERVATIVE = "conservative"
+    MODERATE = "moderate"
+    AGGRESSIVE = "aggressive"
+
+
+class InsightCategory(StrEnum):
+    SPENDING = "spending"
+    GOAL = "goal"
+    BUDGET = "budget"
+    SUBSCRIPTION = "subscription"
+    FORECAST = "forecast"
+
+
+class InsightSeverity(StrEnum):
+    POSITIVE = "positive"
+    INFO = "info"
+    WARNING = "warning"
+    CRITICAL = "critical"
+
+
+class ReviewPeriod(StrEnum):
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+
+
+class NotificationType(StrEnum):
+    GOAL_REMINDER = "goal_reminder"
+    BUDGET_WARNING = "budget_warning"
+    SUBSCRIPTION_RENEWAL = "subscription_renewal"
+    UPCOMING_BILL = "upcoming_bill"
+    FORECAST_WARNING = "forecast_warning"
+    GOAL_COMPLETION = "goal_completion"
+
+
+class NotificationChannel(StrEnum):
+    IN_APP = "in_app"
+    PUSH = "push"
+    EMAIL = "email"
+
+
+class NotificationStatus(StrEnum):
+    QUEUED = "queued"
+    SENT = "sent"
+    READ = "read"
+    DISMISSED = "dismissed"
